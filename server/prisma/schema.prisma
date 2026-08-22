@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  holdings  Holdings[] // One to many
+}
+
+model Holdings {
+  id           String        @id @default(cuid())
+  coinId       String
+  userId       String // Foreign key to User model
+  user         User          @relation(fields: [userId], references: [id]) // Relation to user table (connected by userId)
+  tags         Tag[] // One to many
+  note         String?
+  transactions Transaction[] // One to many
+}
+
+model Tag {
+  id       String     @id @default(cuid())
+  name     String
+  holdings Holdings[]
+}
+
+model Transaction {
+  id           String          @id @default(cuid())
+  holdingId    String // Foreign key to Holdings model
+  holding      Holdings        @relation(fields: [holdingId], references: [id]) // Relation to holdings table (connected by holdingId)
+  type         TransactionType
+  quantity     Decimal
+  pricePerUnit Decimal
+  date         DateTime
+  note         String?
+  isRecurring  Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
