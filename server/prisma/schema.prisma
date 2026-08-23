@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -18,29 +13,28 @@ model User {
   password  String
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  holdings  Holdings[] // One to many
+  holdings  Holdings[]
 }
 
 model Holdings {
   id           String        @id @default(cuid())
   coinId       String
-  userId       String // Foreign key to User model
-  user         User          @relation(fields: [userId], references: [id]) // Relation to user table (connected by userId)
-  tags         Tag[] // One to many
+  userId       String
   note         String?
-  transactions Transaction[] // One to many
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  tags         Tag[]         @relation("HoldingsToTag")
 }
 
 model Tag {
   id       String     @id @default(cuid())
   name     String
-  holdings Holdings[]
+  holdings Holdings[] @relation("HoldingsToTag")
 }
 
 model Transaction {
   id           String          @id @default(cuid())
-  holdingId    String // Foreign key to Holdings model
-  holding      Holdings        @relation(fields: [holdingId], references: [id]) // Relation to holdings table (connected by holdingId)
+  holdingId    String
   type         TransactionType
   quantity     Decimal
   pricePerUnit Decimal
@@ -48,6 +42,7 @@ model Transaction {
   note         String?
   isRecurring  Boolean         @default(false)
   createdAt    DateTime        @default(now())
+  holding      Holdings        @relation(fields: [holdingId], references: [id], onDelete: Cascade)
 }
 
 enum TransactionType {
