@@ -9,4 +9,7 @@ router.post('/signup', signup);
 // Login route
 router.post('/login', login);
 
+// CRUD operations for users
+
+
 export default router;
