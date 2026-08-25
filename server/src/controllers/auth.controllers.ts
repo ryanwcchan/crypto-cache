@@ -77,24 +77,3 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
-
-// CRUD operations for users
-export const addCoin = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user.id;
-    const { coin } = req.body;
-
-    if (!userId || !coin) {
-      return res.status(400).json({ error: "User ID and coin are required" });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-
-    if (!user) {
-      return res.status(404).json({ error: "User does not exist" });
-    }
-  } catch (error: any) {
-    console.error("Error adding coin:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};

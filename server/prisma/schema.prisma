@@ -17,13 +17,14 @@ model User {
 }
 
 model Holdings {
-  id           String        @id @default(cuid())
-  coinId       String
-  userId       String
-  note         String?
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  tags         Tag[]         @relation("HoldingsToTag")
+  id       String  @id @default(cuid())
+  coinId   String
+  userId   String
+  quantity Float
+  note     String?
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // transactions Transaction[]
+  tags     Tag[]   @relation("HoldingsToTag")
 }
 
 model Tag {
@@ -32,18 +33,18 @@ model Tag {
   holdings Holdings[] @relation("HoldingsToTag")
 }
 
-model Transaction {
-  id           String          @id @default(cuid())
-  holdingId    String
-  type         TransactionType
-  quantity     Decimal
-  pricePerUnit Decimal
-  date         DateTime
-  note         String?
-  isRecurring  Boolean         @default(false)
-  createdAt    DateTime        @default(now())
-  holding      Holdings        @relation(fields: [holdingId], references: [id], onDelete: Cascade)
-}
+// model Transaction {
+//   id           String          @id @default(cuid())
+//   holdingId    String
+//   type         TransactionType
+//   quantity     Decimal
+//   pricePerUnit Decimal
+//   date         DateTime
+//   note         String?
+//   isRecurring  Boolean         @default(false)
+//   createdAt    DateTime        @default(now())
+//   holding      Holdings        @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+// }
 
 enum TransactionType {
   BUY
