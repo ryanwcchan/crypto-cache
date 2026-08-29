@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../db/prisma";
+import { Prisma } from "../generated/prisma/client";
 
 export const addCoin = async (req: Request, res: Response) => {
   try {
@@ -32,7 +33,7 @@ export const addCoin = async (req: Request, res: Response) => {
       create: { userId, coinId },
     });
 
-    await prisma.transaction.create({
+    const transaction = await prisma.transaction.create({
       data: {
         holdingId: newHolding.id,
         type: "BUY",
@@ -95,6 +96,10 @@ export const deleteHolding = async (req: Request, res: Response) => {
         id: holdingId,
       },
     });
+
+    return res
+      .status(200)
+      .json({ message: "Successfully deleted ", holdingId });
   } catch (error: any) {
     console.error("Error deleting holding:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -108,7 +113,50 @@ export const updateHolding = async (req: Request, res: Response) => {
         .status(401)
         .json({ error: "Unauthorized - User not authenticated" });
     }
+
+    const userId = req.user.id;
+    const { holdingId } = req.params as { holdingId: string };
+    const { note, addTagIds, removeTagIds } = req.body;
+
+    if (!holdingId) {
+      return res.status(400).json({ error: "Holding ID required" });
+    }
+
+    const existingHolding = await prisma.holdings.findFirst({
+      where: { id: holdingId, userId },
+    });
+
+    if (!existingHolding) {
+      return res.status(404).json({ error: "Holding not found" });
+    }
+
+    const updatedHolding = await prisma.holdings.update({
+      where: { id: holdingId },
+      data: {
+        note,
+        tags: {
+          ...(addTagIds?.length && {
+            connect: addTagIds.map((id: string) => ({ id })),
+          }),
+          ...(removeTagIds?.length && {
+            disconnect: removeTagIds.map((id: string) => ({ id })),
+          }),
+        },
+      },
+      include: { tags: true },
+    });
+
+    return res.status(200).json({ message: "Holding updated", updatedHolding });
   } catch (error: any) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return res
+        .status(400)
+        .json({ error: "One or more tag IDs do not exist" });
+    }
+
     console.error("Error updating holding:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
