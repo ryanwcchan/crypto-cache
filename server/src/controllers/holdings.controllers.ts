@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../db/prisma";
 import { Prisma } from "../generated/prisma/client";
+import { calculateHoldingSummary } from "../utils/holdingSummary";
 
 export const addCoin = async (req: Request, res: Response) => {
   try {
@@ -66,12 +67,31 @@ export const getHoldings = async (req: Request, res: Response) => {
       where: {
         userId,
       },
+      include: {
+        transactions: true,
+      },
     });
 
-    return res.status(200).json({ holdings });
+    const holdingsWithSummary = holdings.map((holding) => ({
+      ...holding,
+      ...calculateHoldingSummary(holding.transactions),
+    }));
+
+    return res.status(200).json({ holdings: holdingsWithSummary });
   } catch (error: any) {
     console.error("Error fetching holdings:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getTransactions = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized user" });
+    }
+  } catch (error: any) {
+    console.error("Error fetching transactions", error);
+    return res.status(500).json("Error in transactions controller");
   }
 };
 
