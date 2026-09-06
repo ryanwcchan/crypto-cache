@@ -28,20 +28,24 @@ export const addCoin = async (req: Request, res: Response) => {
       }
     }
 
-    const newHolding = await prisma.holdings.upsert({
-      where: { userId_coinId: { userId, coinId } },
-      update: {},
-      create: { userId, coinId },
-    });
+    const [newHolding, transaction] = await prisma.$transaction(async (tx) => {
+      const newHolding = await tx.holdings.upsert({
+        where: { userId_coinId: { userId, coinId } },
+        update: {},
+        create: { userId, coinId },
+      });
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        holdingId: newHolding.id,
-        type: "BUY",
-        quantity,
-        pricePerUnit,
-        date: transactionDate,
-      },
+      const transaction = await tx.transaction.create({
+        data: {
+          holdingId: newHolding.id,
+          type: "BUY",
+          quantity,
+          pricePerUnit,
+          date: transactionDate,
+        },
+      });
+
+      return [newHolding, transaction] as const;
     });
 
     return res
@@ -87,11 +91,50 @@ export const getHoldings = async (req: Request, res: Response) => {
 export const getTransactions = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized user" });
+      return res
+        .status(401)
+        .json({ error: "Unauthorized - User not authenticated" });
     }
+
+    const userId = req.user.id;
+    const { holdingId } = req.params as { holdingId: string };
+
+    const holding = await prisma.holdings.findFirst({
+      where: { id: holdingId, userId },
+    });
+
+    if (!holding) {
+      return res.status(404).json({ error: "Holding not found" });
+    }
+
+    const page = Math.max(parseInt(req.query.page as string, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit as string, 10) || 20, 1),
+      100,
+    );
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { holdingId },
+        orderBy: { date: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.transaction.count({ where: { holdingId } }),
+    ]);
+
+    return res.status(200).json({
+      transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error: any) {
     console.error("Error fetching transactions", error);
-    return res.status(500).json("Error in transactions controller");
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
